@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Meu Player</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Player de Música</h1>
+
+  <form action="/upload" method="POST" enctype="multipart/form-data">
+    <input type="file" name="musica" accept="audio/*" required>
+    <button type="submit">Enviar Música</button>
+  </form>
+
+  <h2>Músicas disponíveis:</h2>
+  <div id="playlist"></div>
+
+  <script>
+    fetch('/uploads/')
+      .then(res => res.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const links = Array.from(doc.links).filter(a => a.href.endsWith('.mp3'));
+        const playlist = document.getElementById('playlist');
+        links.forEach(link => {
+          const audio = document.createElement('audio');
+          audio.src = link.href;
+          audio.controls = true;
+          playlist.appendChild(audio);
+        });
+      });
+  </script>
+</body>
+</html>
