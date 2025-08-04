@@ -1,38 +1,55 @@
 const express = require('express');
-const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Garante que a pasta public/uploads existe
-const uploadDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configuração do Multer
+// Configurar armazenamento
 const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  destination: './uploads',
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, Date.now() + ext);
+  }
 });
+
 const upload = multer({ storage });
 
-// Servindo arquivos estáticos
-app.use(express.static(path.join(__dirname, 'public')));
+// Servir arquivos estáticos da raiz
+app.use(express.static(__dirname));
+app.use(express.urlencoded({ extended: true }));
 
-// Rota raiz para o index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Upload dos arquivos
+app.post('/upload', upload.fields([{ name: 'imagem' }, { name: 'audio' }]), (req, res) => {
+  const texto = req.body.texto;
+  const imagem = '/uploads/' + req.files['imagem'][0].filename;
+  const audio = '/uploads/' + req.files['audio'][0].filename;
 
-// Upload da música
-app.post('/upload', upload.single('musica'), (req, res) => {
+  const dados = { imagem, audio, texto };
+
+  let uploads = [];
+  if (fs.existsSync('./uploads/dados.json')) {
+    uploads = JSON.parse(fs.readFileSync('./uploads/dados.json'));
+  }
+
+  uploads.unshift(dados);
+  fs.writeFileSync('./uploads/dados.json', JSON.stringify(uploads, null, 2));
+
   res.redirect('/');
 });
 
-// Inicializando o servidor
+// Fornecer dados JSON para a galeria
+app.get('/uploads', (req, res) => {
+  if (fs.existsSync('./uploads/dados.json')) {
+    const dados = JSON.parse(fs.readFileSync('./uploads/dados.json'));
+    res.json(dados);
+  } else {
+    res.json([]);
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
